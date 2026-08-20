@@ -1,0 +1,232 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "502f91b3-d455-4fc7-b8f6-2d295d961934",
+  "prevIds": [
+    "267d2978-62fd-4afb-a7da-658bdb3173fb"
+  ],
+  "ddl": [
+    {
+      "name": "cart_items",
+      "entityType": "tables"
+    },
+    {
+      "name": "customers",
+      "entityType": "tables"
+    },
+    {
+      "name": "menu_items",
+      "entityType": "tables"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": true,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "cart_items"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "customer_id",
+      "entityType": "columns",
+      "table": "cart_items"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "menu_item_id",
+      "entityType": "columns",
+      "table": "cart_items"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "quantity",
+      "entityType": "columns",
+      "table": "cart_items"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": true,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "customers"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "telegram_chat_id",
+      "entityType": "columns",
+      "table": "customers"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "telegram_username",
+      "entityType": "columns",
+      "table": "customers"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "customers"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "menu_items"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "name",
+      "entityType": "columns",
+      "table": "menu_items"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "price",
+      "entityType": "columns",
+      "table": "menu_items"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "active",
+      "entityType": "columns",
+      "table": "menu_items"
+    },
+    {
+      "columns": [
+        "customer_id"
+      ],
+      "tableTo": "customers",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_cart_items_customer_id_customers_id_fk",
+      "entityType": "fks",
+      "table": "cart_items"
+    },
+    {
+      "columns": [
+        "menu_item_id"
+      ],
+      "tableTo": "menu_items",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_cart_items_menu_item_id_menu_items_id_fk",
+      "entityType": "fks",
+      "table": "cart_items"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "cart_items_pk",
+      "table": "cart_items",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "customers_pk",
+      "table": "customers",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "menu_items_pk",
+      "table": "menu_items",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        {
+          "value": "customer_id",
+          "isExpression": false
+        },
+        {
+          "value": "menu_item_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "cart_customer_menu_item_idx",
+      "entityType": "indexes",
+      "table": "cart_items"
+    },
+    {
+      "columns": [
+        {
+          "value": "telegram_chat_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "customers_telegram_chat_id_idx",
+      "entityType": "indexes",
+      "table": "customers"
+    }
+  ],
+  "renames": []
+}

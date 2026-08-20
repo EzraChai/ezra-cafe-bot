@@ -9,8 +9,10 @@ import {
 import { drizzle } from "drizzle-orm/d1";
 import { menuItems } from "./db/schema";
 import { eq } from "drizzle-orm";
-import { searchMenu } from "./tools/searchMenu";
+import { searchMenu, searchMenuTool } from "./tools/searchMenu";
 import { SYSTEM_INSTRUCTION } from "./systemInstruction";
+import { addToCart, addToCartTool } from "./tools/addToCart";
+import { getOrCreateCustomer } from "./tools/getOrCreateCustomer";
 
 type Bindings = {
   AI_API_KEY: string;
@@ -18,25 +20,9 @@ type Bindings = {
   DB_BINDING: D1Database;
 };
 
-const searchMenuTool: FunctionDeclaration = {
-  name: "search_menu",
-  description: "Search the cafe menu for available items and their prices.",
-
-  parameters: {
-    type: Type.OBJECT,
-
-    properties: {
-      query: {
-        type: Type.STRING,
-        description: "The food or drink the customer is asking about.",
-      },
-    },
-
-    required: ["query"],
-  },
-};
-
-const tools: Tool[] = [{ functionDeclarations: [searchMenuTool] }];
+const tools: Tool[] = [
+  { functionDeclarations: [searchMenuTool, addToCartTool] },
+];
 
 // NOTE: verify this model string against the current @google/genai
 // model list for your SDK version — left unchanged from the original.
@@ -102,6 +88,12 @@ What would you like to order?`,
     apiKey: env.AI_API_KEY,
   });
 
+  const customer = await getOrCreateCustomer(
+    db,
+    message.chat.id,
+    message.from?.username,
+  );
+
   // Explicitly typed so later pushes of model/function-response turns
   // don't get rejected by an inferred literal type from the first entry.
   const contents: Content[] = [
@@ -130,6 +122,7 @@ What would you like to order?`,
       const result = await executeTool(
         db,
         functionCall.name!!,
+        customer.id,
         functionCall.args,
       );
 
@@ -205,11 +198,18 @@ function formatMenu(items: { name: string; price: number }[]): string {
 async function executeTool(
   db: ReturnType<typeof drizzle>,
   name: string,
+  customerId: number,
   args: Record<string, unknown> | undefined,
 ) {
   switch (name) {
     case "search_menu":
       return searchMenu(db, String(args?.query ?? ""));
+
+    case "add_to_cart":
+      const itemId = String(args?.item_id ?? "");
+      const quantity = Number(args?.quantity ?? 0);
+
+      return addToCart(db, itemId, customerId, quantity);
 
     default:
       return {
