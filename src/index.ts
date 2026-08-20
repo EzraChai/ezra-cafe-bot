@@ -1,16 +1,52 @@
 import { Hono } from "hono";
-
-import { GoogleGenAI } from "@google/genai";
+import {
+  FunctionDeclaration,
+  GoogleGenAI,
+  Type,
+  type Content,
+  type Tool,
+} from "@google/genai";
+import { drizzle } from "drizzle-orm/d1";
+import { menuItems } from "./db/schema";
+import { eq } from "drizzle-orm";
+import { searchMenu } from "./tools/searchMenu";
+import { SYSTEM_INSTRUCTION } from "./systemInstruction";
 
 type Bindings = {
   AI_API_KEY: string;
   TELEGRAM_BOT_TOKEN: string;
+  DB_BINDING: D1Database;
 };
 
+const searchMenuTool: FunctionDeclaration = {
+  name: "search_menu",
+  description: "Search the cafe menu for available items and their prices.",
+
+  parameters: {
+    type: Type.OBJECT,
+
+    properties: {
+      query: {
+        type: Type.STRING,
+        description: "The food or drink the customer is asking about.",
+      },
+    },
+
+    required: ["query"],
+  },
+};
+
+const tools: Tool[] = [{ functionDeclarations: [searchMenuTool] }];
+
+// NOTE: verify this model string against the current @google/genai
+// model list for your SDK version — left unchanged from the original.
+const MODEL = "gemini-3.5-flash-lite";
 const app = new Hono<{ Bindings: Bindings }>();
 
-app.get("/", (c) => {
-  return c.text("Hello, World!");
+app.get("/", async (c) => {
+  const db = drizzle(c.env.DB_BINDING, { logger: true });
+  const items = await db.select().from(menuItems);
+  return c.json({ items });
 });
 
 app.post("/telegram/webhook", async (c) => {
@@ -28,6 +64,8 @@ app.post("/telegram/webhook", async (c) => {
 });
 
 async function processUpdate(env: Bindings, update: any) {
+  const db = drizzle(env.DB_BINDING, { logger: true });
+
   const message = update.message;
 
   if (!message?.text) {
@@ -35,43 +73,147 @@ async function processUpdate(env: Bindings, update: any) {
   }
 
   const chatId = message.chat.id;
-  const userText = message.text;
+  const userText = message.text.trim();
+
+  // /start
+  if (userText === "/start") {
+    const items = await db
+      .select()
+      .from(menuItems)
+      .where(eq(menuItems.active, true));
+
+    const menuText = formatMenu(items);
+
+    await sendTelegramMessage(
+      env.TELEGRAM_BOT_TOKEN,
+      chatId,
+      `*Welcome to Ezra Café!* ☕
+
+*Menu*
+
+${menuText}
+
+What would you like to order?`,
+    );
+    return;
+  }
 
   const ai = new GoogleGenAI({
     apiKey: env.AI_API_KEY,
   });
 
-  const interaction = await ai.interactions.create({
-    model: "gemini-3.5-flash-lite",
-    input: `
-You are a friendly café ordering assistant.
+  // Explicitly typed so later pushes of model/function-response turns
+  // don't get rejected by an inferred literal type from the first entry.
+  const contents: Content[] = [
+    {
+      role: "user",
+      parts: [
+        {
+          text: userText,
+        },
+      ],
+    },
+  ];
 
-Menu:
-- Chicken Rice — RM8
-- Nasi Lemak — RM7
-- Iced Coffee — RM4
-- Teh Ais — RM3
-
-Customer message:
-${userText}
-    `,
+  let response = await ai.models.generateContent({
+    model: MODEL,
+    contents,
+    config: {
+      systemInstruction: SYSTEM_INSTRUCTION,
+      tools,
+    },
   });
+  while (response.functionCalls?.length) {
+    const functionResponses: Content["parts"] = [];
 
-  const reply = interaction.output_text ?? "Sorry, I couldn't understand that.";
+    for (const functionCall of response.functionCalls) {
+      const result = await executeTool(
+        db,
+        functionCall.name!!,
+        functionCall.args,
+      );
 
-  await fetch(
-    `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+      functionResponses.push({
+        functionResponse: {
+          name: functionCall.name,
+          response: {
+            result,
+          },
+        },
+      });
+    }
+
+    contents.push({
+      role: "model",
+      parts: response.candidates?.[0]?.content?.parts ?? [],
+    });
+
+    contents.push({
+      role: "user",
+      parts: functionResponses,
+    });
+
+    response = await ai.models.generateContent({
+      model: MODEL,
+      contents,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        tools,
+      },
+    });
+  }
+
+  const reply = response.text ?? "Sorry, I couldn't understand that.";
+
+  await sendTelegramMessage(env.TELEGRAM_BOT_TOKEN, chatId, reply);
+}
+
+async function sendTelegramMessage(
+  token: string,
+  chatId: number,
+  text: string,
+) {
+  const response = await fetch(
+    `https://api.telegram.org/bot${token}/sendMessage`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
+
       body: JSON.stringify({
         chat_id: chatId,
-        text: reply,
+        text,
+        parse_mode: "Markdown",
       }),
     },
   );
+
+  if (!response.ok) {
+    console.error("Telegram error:", await response.text());
+  }
 }
 
 export default app;
+
+function formatMenu(items: { name: string; price: number }[]): string {
+  return items
+    .map((item) => `- ${item.name}: RM${(item.price / 100).toFixed(2)}`)
+    .join("\n");
+}
+
+async function executeTool(
+  db: ReturnType<typeof drizzle>,
+  name: string,
+  args: Record<string, unknown> | undefined,
+) {
+  switch (name) {
+    case "search_menu":
+      return searchMenu(db, String(args?.query ?? ""));
+
+    default:
+      return {
+        error: `Unknown function: ${name}`,
+      };
+  }
+}

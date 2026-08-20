@@ -1,0 +1,10 @@
+name = "Ezra Cafe Bot"
+main = "src/index.ts"
+compatibility_date = "2022-11-07"
+node_compat = true
+
+[[ d1_databases ]]
+binding = "DB"
+database_name = "ezra_coffee"
+database_id = "5d9ae631-d795-4204-8820-ad28252f14b9"
+migrations_dir = "drizzle"

@@ -8,9 +8,12 @@
   },
   "dependencies": {
     "@google/genai": "^2.18.0",
+    "drizzle-orm": "^1.0.0-rc.4",
     "hono": "^4.13.3"
   },
   "devDependencies": {
-    "wrangler": "^4.110.0"
+    "drizzle-kit": "^1.0.0-rc.4",
+    "tsx": "^4.23.12",
+    "wrangler": "^4.124.0"
   }
 }

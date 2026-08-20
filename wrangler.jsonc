@@ -3,31 +3,15 @@
   "name": "ezra-cafe-bot",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-20",
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
-  // "kv_namespaces": [
-  //   {
-  //     "binding": "MY_KV_NAMESPACE",
-  //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  //   }
-  // ],
-  // "r2_buckets": [
-  //   {
-  //     "binding": "MY_BUCKET",
-  //     "bucket_name": "my-bucket"
-  //   }
-  // ],
-  // "d1_databases": [
-  //   {
-  //     "binding": "MY_DB",
-  //     "database_name": "my-database",
-  //     "database_id": ""
-  //   }
-  // ],
+  "d1_databases": [
+    {
+      "binding": "DB_BINDING",
+      "database_name": "ezra_coffee",
+      "database_id": "5d9ae631-d795-4204-8820-ad28252f14b9",
+      "migrations_dir": "drizzle",
+      "migrations_pattern": "drizzle/*/*.sql",
+    },
+  ],
   // "ai": {
   //   "binding": "AI"
   // },
