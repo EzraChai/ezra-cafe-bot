@@ -2,11 +2,16 @@ import { Hono } from "hono";
 
 import { GoogleGenAI } from "@google/genai";
 
+type Bindings = {
+  AI_API_KEY: string;
+  TELEGRAM_BOT_TOKEN: string;
+};
+
+const app = new Hono<{ Bindings: Bindings }>();
+
 const ai = new GoogleGenAI({
   apiKey: process.env.AI_API_KEY,
 });
-
-const app = new Hono();
 
 app.post("/telegram/webhook", async (c) => {
   const update = await c.req.json();
