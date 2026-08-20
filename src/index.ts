@@ -9,11 +9,11 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.AI_API_KEY,
-});
-
 app.post("/telegram/webhook", async (c) => {
+  const ai = new GoogleGenAI({
+    apiKey: c.env.AI_API_KEY,
+  });
+
   const update = await c.req.json();
 
   console.log("Received update:", update);
