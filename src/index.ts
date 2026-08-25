@@ -9,6 +9,7 @@ import { addToCart, addToCartTool } from "./tools/addToCart";
 import { getOrCreateCustomer } from "./tools/getOrCreateCustomer";
 import { getCart, getCartTool } from "./tools/getCart";
 import { removeFromCart, removeFromCartTool } from "./tools/removeFromCart";
+import { updateCart, updateCartTool } from "./tools/updateCart";
 
 type Bindings = {
   AI_API_KEY: string;
@@ -23,6 +24,7 @@ const tools: Tool[] = [
       addToCartTool,
       getCartTool,
       removeFromCartTool,
+      updateCartTool,
     ],
   },
 ];
@@ -234,6 +236,11 @@ async function executeTool(
     case "remove_from_cart":
       const removeItemId = String(args?.item_id ?? "");
       return removeFromCart(db, removeItemId, customerId);
+
+    case "update_cart":
+      const updateItemId = String(args?.item_id ?? "");
+      const updateQuantity = Number(args?.quantity ?? 0);
+      return updateCart(db, updateItemId, customerId, updateQuantity);
 
     default:
       return {
