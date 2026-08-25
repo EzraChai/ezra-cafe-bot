@@ -1,11 +1,5 @@
 import { Hono } from "hono";
-import {
-  FunctionDeclaration,
-  GoogleGenAI,
-  Type,
-  type Content,
-  type Tool,
-} from "@google/genai";
+import { GoogleGenAI, type Content, type Tool } from "@google/genai";
 import { drizzle } from "drizzle-orm/d1";
 import { menuItems } from "./db/schema";
 import { eq } from "drizzle-orm";
@@ -13,6 +7,8 @@ import { searchMenu, searchMenuTool } from "./tools/searchMenu";
 import { SYSTEM_INSTRUCTION } from "./systemInstruction";
 import { addToCart, addToCartTool } from "./tools/addToCart";
 import { getOrCreateCustomer } from "./tools/getOrCreateCustomer";
+import { getCart, getCartTool } from "./tools/getCart";
+import { removeFromCart, removeFromCartTool } from "./tools/removeFromCart";
 
 type Bindings = {
   AI_API_KEY: string;
@@ -21,7 +17,14 @@ type Bindings = {
 };
 
 const tools: Tool[] = [
-  { functionDeclarations: [searchMenuTool, addToCartTool] },
+  {
+    functionDeclarations: [
+      searchMenuTool,
+      addToCartTool,
+      getCartTool,
+      removeFromCartTool,
+    ],
+  },
 ];
 
 // NOTE: verify this model string against the current @google/genai
@@ -80,6 +83,7 @@ async function processUpdate(env: Bindings, update: any) {
 ${menuText}
 
 What would you like to order?`,
+      message.message_id,
     );
     return;
   }
@@ -158,13 +162,19 @@ What would you like to order?`,
 
   const reply = response.text ?? "Sorry, I couldn't understand that.";
 
-  await sendTelegramMessage(env.TELEGRAM_BOT_TOKEN, chatId, reply);
+  await sendTelegramMessage(
+    env.TELEGRAM_BOT_TOKEN,
+    chatId,
+    reply,
+    message.message_id,
+  );
 }
 
 async function sendTelegramMessage(
   token: string,
   chatId: number,
   text: string,
+  replyToMessageId: number,
 ) {
   const response = await fetch(
     `https://api.telegram.org/bot${token}/sendMessage`,
@@ -178,6 +188,13 @@ async function sendTelegramMessage(
         chat_id: chatId,
         text,
         parse_mode: "Markdown",
+        ...(replyToMessageId
+          ? {
+              reply_parameters: {
+                message_id: replyToMessageId,
+              },
+            }
+          : {}),
       }),
     },
   );
@@ -210,6 +227,13 @@ async function executeTool(
       const quantity = Number(args?.quantity ?? 0);
 
       return addToCart(db, itemId, customerId, quantity);
+
+    case "get_cart":
+      return getCart(db, customerId);
+
+    case "remove_from_cart":
+      const removeItemId = String(args?.item_id ?? "");
+      return removeFromCart(db, removeItemId, customerId);
 
     default:
       return {
